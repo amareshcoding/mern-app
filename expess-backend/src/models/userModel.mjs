@@ -57,14 +57,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 3,
+      maxlength: 50,
     },
     lastName: {
       type: String,
       required: true,
       trim: true,
+      minlength: 3,
+      maxlength: 50,
+    },
+    profileImage: {
+      type: String,
+      required: false,
     },
     email: {
       type: String,
+      lowercase: true,
       required: true,
       unique: true,
       trim: true,
@@ -83,6 +92,12 @@ const userSchema = new mongoose.Schema(
       type: [addressSchema],
       required: false,
     },
+    role: {
+      // User Roles and Permissions
+      type: String,
+      enum: ['ADMIN', 'USER'],
+      default: 'USER',
+    },
     deviceType: {
       type: String,
       required: false,
@@ -99,11 +114,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-/**
- * Pre-save hook to hash the password before saving the user document.
- * @function
- * @param {Function} next - The next middleware function in the stack.
- */
+// Pre-save hook to hash the password before saving the user document.
 userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
@@ -111,15 +122,9 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Function to verify the password
+// Function to verify the password using bcrypt compare method
 userSchema.methods.verifyPassword = async function (password) {
-  try {
-    // Compare the provided password with the hashed password stored in the database
-    const isMatch = await bcrypt.compare(password, this.password);
-    return isMatch;
-  } catch (error) {
-    throw new Error('Error verifying password');
-  }
+  return await bcrypt.compare(password, this.password);
 };
 
 /**
