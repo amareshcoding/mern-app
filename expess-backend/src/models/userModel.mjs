@@ -1,14 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-/**
- * Address Schema
- * @typedef {Object} Address
- * @property {string} street - The street of the address.
- * @property {string} city - The city of the address.
- * @property {string} state - The state of the address.
- * @property {string} zip - The zip code of the address.
- */
+// Address Schema
 const addressSchema = new mongoose.Schema(
   {
     street: {
@@ -38,19 +31,7 @@ const addressSchema = new mongoose.Schema(
   }
 );
 
-/**
- * User Schema
- * @typedef {Object} User
- * @property {string} firstName - The first name of the user.
- * @property {string} lastName - The last name of the user.
- * @property {string} email - The email address of the user. Must be unique.
- * @property {string} mobile - The mobile number of the user. Must be unique.
- * @property {Address[]} addresses - The addresses of the user.
- * @property {string} password - The hashed password of the user.
- * @property {string} deviceType - The type of device used for login.
- * @property {Date} lastLogin - The date and time of the last login.
- */
-
+//User Schema
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -103,10 +84,6 @@ const userSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
-    lastLogin: {
-      type: Date,
-      required: false,
-    },
   },
   {
     timestamps: true,
@@ -127,11 +104,7 @@ userSchema.methods.verifyPassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-/**
- * Mongoose model for User.
- * @typedef {mongoose.Model<User>} UserModel
- */
-
+// Mongoose model for User.
 const User = mongoose.model('User', userSchema);
 
 export default User;
