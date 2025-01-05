@@ -11,7 +11,12 @@ import helmet from 'helmet';
 
 // Config import
 import mongoConnect from './config/mongoDbConfig.mjs';
-import { listRoutes } from './utils/printRoutes.mjs';
+
+// Import middlewares
+import { printAllRoutes } from './utils/printRoutes.mjs';
+
+// Import routers
+import authRouther from './routers/authRouters.mjs';
 
 // Create the Express application
 const app = express();
@@ -28,7 +33,11 @@ app.get('/', (req, res) => {
   res.send('Welcome to Express Server!');
 });
 
-listRoutes(app);
+// Auth routes
+app.use('/auth', authRouther);
+
+// Print all routes middleware
+printAllRoutes(app);
 
 // Define the port number on which the server will listen
 const PORT = process.env.PORT || 8000;

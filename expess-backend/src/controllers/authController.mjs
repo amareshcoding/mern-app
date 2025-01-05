@@ -1,33 +1,25 @@
-import jwt from 'jsonwebtoken';
+import { validationResult } from 'express-validator';
 import User from '../models/userModel.mjs';
 import { CONST } from '../utils/const.mjs';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+} from '../utils/helper.mjs';
 
-// Generate JWT Access Token
-const generateAccessToken = (user) => {
-  return jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, {
-    expiresIn: '15m',
-  });
-};
+// Register controller
+export const register = async (req, res) => {
+  // Handle validation results
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(CONST.CODES.BAD_REQUEST).json({ errors: errors.array() });
+  }
 
-// Generate JWT Refresh Token
-const generateRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
-};
-
-// Generate tokens
-const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-};
-
-// Signup controller
-export const signup = async (req, res) => {
+  // Extract user data from request body
   const { firstName, lastName, email, password } = req.body;
 
   try {
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res
@@ -35,6 +27,7 @@ export const signup = async (req, res) => {
         .json({ message: 'User already exists' });
     }
 
+    // Create a new user
     await User.create({
       firstName,
       lastName,
@@ -42,13 +35,14 @@ export const signup = async (req, res) => {
       password,
     });
 
+    // Send response
     res
       .status(CONST.CODES.CREATED)
       .json({ message: 'User created successfully!' });
   } catch (error) {
     res
       .status(CONST.CODES.INTERNAL_SERVER_ERROR)
-      .json({ message: 'Something went wrong!' });
+      .json({ message: 'Something went wrong!', error });
   }
 };
 
@@ -67,8 +61,8 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
 
     // Generate tokens
-    const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user);
 
     // Store refresh token in cookies
     res.cookie('refreshToken', refreshToken, {
@@ -101,7 +95,7 @@ export const token = async (req, res) => {
 
   try {
     // Verify refresh token
-    const { id } = verifyRefreshToken(refreshToken);
+    const { id } = verifyToken(refreshToken);
     // Find user by ID
     const user = await User.findById(id);
     // Generate a new access token
@@ -129,8 +123,8 @@ export const resetPassword = async (req, res) => {
     await existingUser.save();
 
     // Generate tokens
-    const accessToken = generateAccessToken(existingUser);
     const refreshToken = generateRefreshToken(existingUser);
+    const accessToken = generateAccessToken(existingUser);
 
     // Store refresh token in cookies
     res.cookie('refreshToken', refreshToken, {
@@ -143,4 +137,10 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
   }
+};
+
+// Logout controller
+export const logout = async (req, res) => {
+  res.clearCookie('refreshToken');
+  res.status(200).json({ message: 'Logged out successfully' });
 };

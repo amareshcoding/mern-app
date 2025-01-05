@@ -43,9 +43,8 @@ const userSchema = new mongoose.Schema(
     },
     lastName: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
-      minlength: 3,
       maxlength: 50,
     },
     profileImage: {
@@ -62,11 +61,12 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      minlength: 6,
     },
     mobile: {
       type: String,
       required: false,
-      unique: true,
+      unique: false,
       trim: true,
     },
     addresses: {

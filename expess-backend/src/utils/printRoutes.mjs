@@ -1,5 +1,5 @@
 // Middleware function to log all routes
-export const listRoutes = (app) => {
+export const printAllRoutes = (app) => {
   console.log('\nAvailable Routes:');
   app._router.stack.forEach((middleware) => {
     if (middleware.route) {
