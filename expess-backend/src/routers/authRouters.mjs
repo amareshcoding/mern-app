@@ -8,6 +8,7 @@ import {
   token,
 } from '../controllers/authController.mjs';
 import { authMiddleWare } from '../middlewares/authMiddleWare.mjs';
+import { handleValidationError } from '../middlewares/validationMiddleware.mjs';
 
 const authRouther = Router();
 
@@ -45,11 +46,31 @@ authRouther.post(
       .withMessage('Password must be at least 6 characters long'),
     // later we can add custom validation to check for strong password
   ],
+  handleValidationError,
   register
 );
 
 // Login a user
-authRouther.post('/login', login);
+authRouther.post(
+  '/login',
+  [
+    check('email')
+      .isEmail()
+      .withMessage('Invalid email address')
+      .notEmpty()
+      .withMessage('Email is required'),
+
+    check('password')
+      .isString()
+      .withMessage('Password must be a string')
+      .notEmpty()
+      .withMessage('Password is required')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long'),
+  ],
+  handleValidationError,
+  login
+);
 
 // Refresh the access token
 authRouther.post('/token', authMiddleWare, token);
