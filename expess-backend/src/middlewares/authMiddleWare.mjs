@@ -1,15 +1,15 @@
 import { CODES } from '../utils/const.mjs';
-import { verifyToken } from '../utils/helper.mjs';
+import { verifyAccessToken } from '../utils/helper.mjs';
 
 // Middleware to authenticate user
 export const authMiddleWare = (req, res, next) => {
-  const token =
-    req.cookies.token || req.headers['Authorization']?.split(' ')[1]; // Get token from cookies or headers
+
+  const token = req.headers['authorization']?.split(' ')[1];
   if (!token)
     return res.status(CODES.ACCESS_DENIED).json({ message: 'No token found' });
 
   try {
-    const user = verifyToken(token);
+    const user = verifyAccessToken(token);
     req.user = user;
     next();
   } catch (error) {

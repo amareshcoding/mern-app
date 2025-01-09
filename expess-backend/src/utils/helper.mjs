@@ -8,9 +8,14 @@ export const generateAccessToken = (user) => {
     { _id: user._id, email: user.email },
     process.env.JWT_SECRET,
     {
-      expiresIn: '15m',
+      expiresIn: '60m',
     }
   );
+};
+
+// Verify Access Token
+export const verifyAccessToken = (token) => {
+  return jwt.verify(token, process.env.JWT_SECRET);
 };
 
 // Generate JWT Refresh Token
@@ -18,12 +23,12 @@ export const generateRefreshToken = (user) => {
   return jwt.sign(
     { _id: user._id, email: user.email },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '30d' }
   );
 };
 
-// Verify token
-export const verifyToken = (token) => {
+// Verify refresh token
+export const verifyRefreshToken = (token) => {
   return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 };
 

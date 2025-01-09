@@ -3,8 +3,8 @@ import User from '../models/userModel.mjs';
 import {
   generateAccessToken,
   generateRefreshToken,
-  verifyToken,
   internalServerErrorResponse,
+  verifyRefreshToken,
 } from '../utils/helper.mjs';
 
 // Register controller
@@ -91,9 +91,9 @@ export const token = async (req, res) => {
 
   try {
     // Verify refresh token
-    const { id } = verifyToken(refreshToken);
+    const { _id } = verifyRefreshToken(refreshToken);
     // Find user by ID
-    const user = await User.findById(id);
+    const user = await User.findById(_id);
     // Generate a new access token
     const accessToken = generateAccessToken(user);
     // Send the new access token
@@ -107,7 +107,7 @@ export const token = async (req, res) => {
 
 // Password reset controller
 export const resetPassword = async (req, res) => {
-  const { userId, newPassword } = req.body;
+  const { userId, password } = req.body;
 
   try {
     // Find the user by ID
@@ -117,7 +117,7 @@ export const resetPassword = async (req, res) => {
     }
 
     // Update user's password
-    existingUser.password = newPassword;
+    existingUser.password = password;
     await existingUser.save();
 
     // Generate tokens

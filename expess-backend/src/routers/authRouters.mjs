@@ -73,10 +73,30 @@ authRouther.post(
 );
 
 // Refresh the access token
-authRouther.post('/token', authMiddleWare, token);
+authRouther.post('/token', token);
 
 // Reset the user's password
-authRouther.post('/resetPassword', authMiddleWare, resetPassword);
+authRouther.post(
+  '/resetPassword',
+  authMiddleWare,
+  [
+    check('userId')
+      .isString()
+      .withMessage('userId must be a string')
+      .notEmpty()
+      .withMessage('userId is required'),
+
+    check('password')
+      .isString()
+      .withMessage('Password must be a string')
+      .notEmpty()
+      .withMessage('Password is required')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long'),
+  ],
+  handleValidationError,
+  resetPassword
+);
 
 // Logout a user
 authRouther.post('/logout', authMiddleWare, logout);
