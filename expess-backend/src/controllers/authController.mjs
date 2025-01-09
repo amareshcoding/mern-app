@@ -1,107 +1,144 @@
-import jwt from 'jsonwebtoken';
+import { CODES } from '../utils/const.mjs';
 import User from '../models/userModel.mjs';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  internalServerErrorResponse,
+  verifyRefreshToken,
+} from '../utils/helper.mjs';
 
-// Generate tokens
-const generateTokens = (user) => {
-  const accessToken = jwt.sign(
-    { email: user.email, id: user._id },
-    'access_secret',
-    { expiresIn: '15m' }
-  );
-  const refreshToken = jwt.sign(
-    { email: user.email, id: user._id },
-    'refresh_secret',
-    { expiresIn: '7d' }
-  );
-  return { accessToken, refreshToken };
-};
-
-// Refresh token controller
-export const refreshToken = async (req, res) => {
-  const { token } = req.body;
-
-  if (!token) {
-    return res.status(403).json({ message: 'Refresh token is required' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, 'refresh_secret');
-    const existingUser = await User.findById(decoded.id);
-
-    if (!existingUser) {
-      return res.status(403).json({ message: 'Invalid refresh token' });
-    }
-
-    const tokens = generateTokens(existingUser);
-    res.status(200).json(tokens);
-  } catch (error) {
-    res.status(403).json({ message: 'Invalid refresh token' });
-  }
-};
-
-// Signup controller
-export const signup = async (req, res) => {
+// Register controller
+export const register = async (req, res) => {
+  // Extract user data from request body
   const { firstName, lastName, email, password } = req.body;
 
   try {
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res
+        .status(CODES.BAD_REQUEST)
+        .json({ message: 'User already exists' });
     }
 
-    const newUser = await User.create({
+    // Create a new user
+    await User.create({
       firstName,
       lastName,
       email,
       password,
     });
 
-    const tokens = generateTokens(newUser);
-    res.status(201).json({ result: newUser, ...tokens });
+    // Send response
+    res.status(CODES.CREATED).json({ message: 'User created successfully!' });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    return internalServerErrorResponse(res, error);
   }
 };
 
-// Login controller
+// Login controller - Verify Password  And Generates Access and Refresh Tokens
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  try {
+    // Validate user
+    const user = await User.findOne({ email });
+    if (!user)
+      return res
+        .status(CODES.BAD_REQUEST)
+        .json({ message: 'Email or password is wrong' });
+
+    // Validate password
+    const isPasswordCorrect = await user.verifyPassword(password);
+    if (!isPasswordCorrect)
+      return res
+        .status(CODES.BAD_REQUEST)
+        .json({ message: 'Invalid credentials' });
+
+    // Generate tokens
+    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user);
+
+    // Store refresh token in cookies
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+    });
+
+    // Send response
+    res.status(CODES.OK).json({
+      message: 'Logged in successfully',
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+      accessToken,
+    });
+  } catch (error) {
+    return internalServerErrorResponse(res, error);
+  }
+};
+
+// Token Refresh Route
+export const token = async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken)
+    return res
+      .status(CODES.ACCESS_DENIED)
+      .json({ message: 'No refresh token found' });
 
   try {
-    const existingUser = await User.findOne({ email });
-    if (!existingUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const isPasswordCorrect = existingUser.verifyPassword(password);
-    if (!isPasswordCorrect) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    const tokens = generateTokens(existingUser);
-    res.status(200).json({ result: existingUser, ...tokens });
+    // Verify refresh token
+    const { _id } = verifyRefreshToken(refreshToken);
+    // Find user by ID
+    const user = await User.findById(_id);
+    // Generate a new access token
+    const accessToken = generateAccessToken(user);
+    // Send the new access token
+    res.status(CODES.OK).json({ accessToken });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res
+      .status(CODES.BAD_REQUEST)
+      .json({ message: 'Invalid refresh token', error });
   }
 };
 
 // Password reset controller
 export const resetPassword = async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { userId, password } = req.body;
 
   try {
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
+    // Find the user by ID
+    const existingUser = await User.findById(userId);
     if (!existingUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Update user's password
-    existingUser.password = newPassword;
+    existingUser.password = password;
     await existingUser.save();
 
-    res.status(200).json({ message: 'Password reset successful' });
+    // Generate tokens
+    const refreshToken = generateRefreshToken(existingUser);
+    const accessToken = generateAccessToken(existingUser);
+
+    // Store refresh token in cookies
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+    });
+
+    res.status(200).json({ message: 'Password reset successful', accessToken });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    return internalServerErrorResponse(res, error);
   }
+};
+
+// Logout controller
+export const logout = async (req, res) => {
+  res.clearCookie('refreshToken');
+  res.status(200).json({ message: 'Logged out successfully' });
 };

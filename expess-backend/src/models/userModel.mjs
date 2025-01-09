@@ -1,14 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-/**
- * Address Schema
- * @typedef {Object} Address
- * @property {string} street - The street of the address.
- * @property {string} city - The city of the address.
- * @property {string} state - The state of the address.
- * @property {string} zip - The zip code of the address.
- */
+// Address Schema
 const addressSchema = new mongoose.Schema(
   {
     street: {
@@ -38,33 +31,29 @@ const addressSchema = new mongoose.Schema(
   }
 );
 
-/**
- * User Schema
- * @typedef {Object} User
- * @property {string} firstName - The first name of the user.
- * @property {string} lastName - The last name of the user.
- * @property {string} email - The email address of the user. Must be unique.
- * @property {string} mobile - The mobile number of the user. Must be unique.
- * @property {Address[]} addresses - The addresses of the user.
- * @property {string} password - The hashed password of the user.
- * @property {string} deviceType - The type of device used for login.
- * @property {Date} lastLogin - The date and time of the last login.
- */
-
+//User Schema
 const userSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
       required: true,
       trim: true,
+      minlength: 3,
+      maxlength: 50,
     },
     lastName: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      maxlength: 50,
+    },
+    profileImage: {
+      type: String,
+      required: false,
     },
     email: {
       type: String,
+      lowercase: true,
       required: true,
       unique: true,
       trim: true,
@@ -72,25 +61,28 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      minlength: 6,
     },
     mobile: {
       type: String,
       required: false,
-      unique: true,
+      unique: false,
       trim: true,
     },
     addresses: {
       type: [addressSchema],
       required: false,
     },
+    role: {
+      // User Roles and Permissions
+      type: String,
+      enum: ['ADMIN', 'USER'],
+      default: 'USER',
+    },
     deviceType: {
       type: String,
       required: false,
       trim: true,
-    },
-    lastLogin: {
-      type: Date,
-      required: false,
     },
   },
   {
@@ -99,11 +91,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-/**
- * Pre-save hook to hash the password before saving the user document.
- * @function
- * @param {Function} next - The next middleware function in the stack.
- */
+// Pre-save hook to hash the password before saving the user document.
 userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
@@ -111,22 +99,12 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Function to verify the password
+// Function to verify the password using bcrypt compare method
 userSchema.methods.verifyPassword = async function (password) {
-  try {
-    // Compare the provided password with the hashed password stored in the database
-    const isMatch = await bcrypt.compare(password, this.password);
-    return isMatch;
-  } catch (error) {
-    throw new Error('Error verifying password');
-  }
+  return await bcrypt.compare(password, this.password);
 };
 
-/**
- * Mongoose model for User.
- * @typedef {mongoose.Model<User>} UserModel
- */
-
+// Mongoose model for User.
 const User = mongoose.model('User', userSchema);
 
 export default User;
