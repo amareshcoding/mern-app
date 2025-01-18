@@ -1,9 +1,5 @@
-// Import dotenv to load environment variables
-import dotenv from 'dotenv';
-// Load environment variables
-dotenv.config();
-
 // Import dependencies
+import dotenv from 'dotenv';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -14,6 +10,8 @@ import morgan from 'morgan';
 import mongoConnect from './config/mongoDbConfig.mjs';
 
 // Import middlewares
+import { tracerMiddleware } from './middlewares/tracerMiddleware.mjs';
+import { limiter } from './middlewares/rateLimiterMiddleware.mjs';
 import { printAllRoutes } from './middlewares/printRoutes.mjs';
 
 // Import routers
@@ -22,6 +20,9 @@ import authRouther from './routers/authRouters.mjs';
 // Create the Express application
 const app = express();
 
+// Load environment variables
+dotenv.config();
+
 // Configure middleware
 app.use(express.json()); // Middleware to parse JSON data
 app.use(express.urlencoded({ extended: true })); // Middleware to parse URL-encoded data
@@ -29,6 +30,8 @@ app.use(cookieParser()); // Middleware to parse cookies
 app.use(cors()); // Middleware to enable CORS
 app.use(helmet()); // Middleware to secure the app by setting various HTTP headers
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Middleware to log HTTP requests dev/combined
+app.use(limiter); // Middleware to limit the number of requests
+app.use(tracerMiddleware); // Middleware to trace requests
 
 // Define a route for the root URL that sends a welcome message
 app.get('/', (req, res) => {

@@ -1,5 +1,6 @@
 import { CODES } from '../utils/const.mjs';
 import User from '../models/userModel.mjs';
+import tracer from '../config/tracer.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -36,6 +37,10 @@ export const register = async (req, res) => {
   }
 };
 
+// Track Failed Authentication Attempts
+const failedAuthAttempts = {};
+// Reset request count every minute
+
 // Login controller - Verify Password  And Generates Access and Refresh Tokens
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -49,10 +54,24 @@ export const login = async (req, res) => {
 
     // Validate password
     const isPasswordCorrect = await user.verifyPassword(password);
-    if (!isPasswordCorrect)
+    if (!isPasswordCorrect) {
+      failedAuthAttempts[email] = (failedAuthAttempts[email] || 0) + 1;
+      if (failedAuthAttempts[email] > 3) {
+        console.warn(
+          `More than 3 wrong attempts by email: ${email}`
+        );
+        // Log to Datadog
+        tracer.track('failed_auth_attempts', {
+          user: email,
+          attempts: failedAuthAttempts[email],
+        });
+      }
       return res
         .status(CODES.BAD_REQUEST)
         .json({ message: 'Invalid credentials' });
+    }
+    // Reset on successful login
+    failedAuthAttempts[username] = 0;
 
     // Generate tokens
     const refreshToken = generateRefreshToken(user);
